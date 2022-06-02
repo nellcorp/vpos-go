@@ -113,7 +113,7 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 
 	request := PaymentTransaction{
-		Type:        paymentTransaction,
+		Type:        transactionType,
 		PosID:       v.PosID,
 		Mobile:      mobile,
 		Amount:      amount,
