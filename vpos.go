@@ -36,6 +36,13 @@ type (
 		CallbackURL string `json:"callback_url"`
 	}
 
+	AuthorizedPaymentTransaction struct {
+		Type                string `json:"type"`
+		ParentTransactionID string `json:"parent_transaction_id"`
+		Amount              string `json:"amount"`
+		CallbackURL         string `json:"callback_url"`
+	}
+
 	RefundTransaction struct {
 		Type                string `json:"type"`
 		ParentTransactionID string `json:"parent_transaction_id"`
@@ -118,6 +125,52 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 		Mobile:      mobile,
 		Amount:      amount,
 		CallbackURL: fmt.Sprintf("%s?nonce=%s", v.PaymentCallbackURL, nonce),
+	}
+
+	_, headers, err := httpPost(
+		url,
+		map[string]string{
+			"Authorization":   fmt.Sprintf("Bearer %s", v.Token),
+			"Idempotency-Key": idempotencyKey,
+		},
+		request,
+	)
+	if err != nil {
+		return
+	}
+
+	location := headers.Get("Location")
+	if location == "" {
+		err = errors.New("could not retrieve transaction ID from VPOS response")
+		return
+	}
+
+	locationParts := strings.Split(location, "/")
+	locationPartsSize := len(locationParts)
+	if locationPartsSize == 0 {
+		err = errors.New("could not retrieve transaction ID from VPOS response")
+		return
+	}
+
+	transactionID = locationParts[locationPartsSize-1]
+	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+
+	return
+}
+
+//It creates a new payment transaction from a previously accepted authorization transaction
+func (v *VPOS) PaymentWithAuthorization(parent_transaction_id, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	url := fmt.Sprintf("%s/transactions", sandboxURL)
+	if v.Environment == "PRD" {
+		url = fmt.Sprintf("%s/transactions", productionURL)
+	}
+
+	idempotencyKey, nonce = shortUUID(), shortUUID()
+	request := AuthorizedPaymentTransaction{
+		Type:                paymentTransaction,
+		ParentTransactionID: parent_transaction_id,
+		Amount:              amount,
+		CallbackURL:         fmt.Sprintf("%s?nonce=%s", v.PaymentCallbackURL, nonce),
 	}
 
 	_, headers, err := httpPost(
