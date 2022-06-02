@@ -15,6 +15,7 @@ const (
 	paymentTransaction       = "payment"
 	refundTransaction        = "refund"
 	authorizationTransaction = "authorization"
+	cancelationTransaction   = "cancelation"
 )
 
 type (
@@ -150,7 +151,15 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 	return
 }
 
-func (v *VPOS) NewRefund(parent_transaction_id string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+//transactionType is either 'refund' or 'cancelation'
+//if transactionType is 'refund', it will create a new refund transaction
+//if transactionType is 'cancelation', it will create a new cancelation transaction for a previously accepted payment authorization
+func (v *VPOS) RefundOrCancelation(transactionType, parent_transaction_id string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	if !(transactionType == refundTransaction || transactionType == cancelationTransaction) {
+		err = errors.New("invalid transaction type")
+		return
+	}
+
 	url := fmt.Sprintf("%s/transactions", sandboxURL)
 	if v.Environment == "PRD" {
 		url = fmt.Sprintf("%s/transactions", productionURL)
@@ -159,7 +168,7 @@ func (v *VPOS) NewRefund(parent_transaction_id string) (transactionID, idempoten
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 
 	request := RefundTransaction{
-		Type:                refundTransaction,
+		Type:                transactionType,
 		ParentTransactionID: parent_transaction_id,
 		CallbackURL:         fmt.Sprintf("%s?nonce=%s", v.RefundCallbackURL, nonce),
 	}
