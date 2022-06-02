@@ -21,17 +21,17 @@ var (
 )
 
 func TestPaymentTransaction(t *testing.T) {
-	_, _, _, _, err := vpos.NewPayment("900111222", "123.45")
+	_, _, _, _, err := vpos.PaymentTransaction("payment", "900111222", "123.45")
 	if err != nil {
 		t.Logf("something went wrong: %v", err)
 		t.Fail()
 	}
 }
 
-func TestFailPaymentWithInvalidToken(t *testing.T) {
+func TestFailPaymentTransactionWithInvalidToken(t *testing.T) {
 	vpos.Token = "vpos-token"
 
-	_, _, _, _, err := vpos.NewPayment("900111222", "123.45")
+	_, _, _, _, err := vpos.PaymentTransaction("payment", "900111222", "123.45")
 	if err == nil {
 		t.Log("payment should not be performed with that token, something went wrong!")
 		t.Fail()

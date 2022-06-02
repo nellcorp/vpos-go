@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	sandboxURL         = "https://sandbox.vpos.ao/api/v1"
-	productionURL      = "https://api.vpos.ao/api/v1"
-	paymentTransaction = "payment"
-	refundTransaction  = "refund"
+	sandboxURL               = "https://sandbox.vpos.ao/api/v1"
+	productionURL            = "https://api.vpos.ao/api/v1"
+	paymentTransaction       = "payment"
+	refundTransaction        = "refund"
+	authorizationTransaction = "authorization"
 )
 
 type (
@@ -94,7 +95,15 @@ func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err
 	return int64(floatResult), nil
 }
 
-func (v *VPOS) NewPayment(mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+//transactionType is either 'payment' or 'authorization'
+//if transactionType is 'payment', it will create a new payment transaction
+//if transactionType is 'authorization', it will create a new authorization transaction
+func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	if !(transactionType == paymentTransaction || transactionType == authorizationTransaction) {
+		err = errors.New("invalid transaction type")
+		return
+	}
+
 	url := fmt.Sprintf("%s/transactions", sandboxURL)
 	if v.Environment == "PRD" {
 		url = fmt.Sprintf("%s/transactions", productionURL)
