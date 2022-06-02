@@ -23,7 +23,7 @@ type (
 		PaymentCallbackURL string //Your Payment Callback URL
 		RefundCallbackURL  string //Your Refund Callback URL
 		SupervisorCard     string //Your GPO Supervisor Card
-		Environment        string //Your Environment, must be 'production' or 'sandbox'
+		Environment        string //Your Environment, set 'PRD' for production or an empty string for sandbox environment
 	}
 
 	PaymentTransaction struct {
@@ -34,17 +34,19 @@ type (
 		CallbackURL string `json:"callback_url"`
 	}
 
+	RefundTransaction struct {
+		Type                string `json:"type"`
+		ParentTransactionID string `json:"parent_transaction_id"`
+		CallbackURL         string `json:"call_back_url"`
+	}
+
 	TransactionStatus struct {
 		SecondsRemaining json.Number `json:"eta"`
 		CreatedAt        string      `json:"inserted_at"`
 	}
 )
 
-func NewVPOS(token string, posID int64, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) (*VPOS, error) {
-	if !(environment == "production" || environment == "sandbox") {
-		return &VPOS{}, errors.New("invalid environment")
-	}
-
+func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) *VPOS {
 	return &VPOS{
 		Token:              token,
 		PosID:              posID,
@@ -52,7 +54,7 @@ func NewVPOS(token string, posID int64, paymentCallbackURL, refundCallbackURL, s
 		RefundCallbackURL:  refundCallbackURL,
 		SupervisorCard:     supervisorCard,
 		Environment:        environment,
-	}, nil
+	}
 }
 
 func GetStatusReason(code int64) (reason string, err error) {
@@ -65,7 +67,7 @@ func GetStatusReason(code int64) (reason string, err error) {
 
 func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err error) {
 	url := fmt.Sprintf("%s/requests/%s", sandboxURL, transactionID)
-	if v.Environment == "production" {
+	if v.Environment == "PRD" {
 		url = fmt.Sprintf("%s/requests/%s", productionURL, transactionID)
 	}
 
@@ -92,31 +94,65 @@ func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err
 	return int64(floatResult), nil
 }
 
-func (v *VPOS) InitPaymentTransaction(transactionType, mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
-	var callbackURL string
-
-	if transactionType == paymentTransaction {
-		callbackURL = v.PaymentCallbackURL
-	} else if transactionType == refundTransaction {
-		callbackURL = v.RefundCallbackURL
-	} else {
-		err = errors.New("invalid transaction type")
-		return
-	}
-
+func (v *VPOS) NewPayment(mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
 	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "production" {
+	if v.Environment == "PRD" {
 		url = fmt.Sprintf("%s/transactions", productionURL)
 	}
 
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 
 	request := PaymentTransaction{
-		Type:        transactionType,
+		Type:        paymentTransaction,
 		PosID:       v.PosID,
 		Mobile:      mobile,
 		Amount:      amount,
-		CallbackURL: fmt.Sprintf("%s?nonce=%s", callbackURL, nonce),
+		CallbackURL: fmt.Sprintf("%s?nonce=%s", v.PaymentCallbackURL, nonce),
+	}
+
+	_, headers, err := httpPost(
+		url,
+		map[string]string{
+			"Authorization":   fmt.Sprintf("Bearer %s", v.Token),
+			"Idempotency-Key": idempotencyKey,
+		},
+		request,
+	)
+	if err != nil {
+		return
+	}
+
+	location := headers.Get("Location")
+	if location == "" {
+		err = errors.New("could not retrieve transaction ID from VPOS response")
+		return
+	}
+
+	locationParts := strings.Split(location, "/")
+	locationPartsSize := len(locationParts)
+	if locationPartsSize == 0 {
+		err = errors.New("could not retrieve transaction ID from VPOS response")
+		return
+	}
+
+	transactionID = locationParts[locationPartsSize-1]
+	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+
+	return
+}
+
+func (v *VPOS) NewRefund(parent_transaction_id string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	url := fmt.Sprintf("%s/transactions", sandboxURL)
+	if v.Environment == "PRD" {
+		url = fmt.Sprintf("%s/transactions", productionURL)
+	}
+
+	idempotencyKey, nonce = shortUUID(), shortUUID()
+
+	request := RefundTransaction{
+		Type:                refundTransaction,
+		ParentTransactionID: parent_transaction_id,
+		CallbackURL:         fmt.Sprintf("%s?nonce=%s", v.RefundCallbackURL, nonce),
 	}
 
 	_, headers, err := httpPost(
