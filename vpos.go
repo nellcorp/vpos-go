@@ -53,6 +53,19 @@ type (
 		SecondsRemaining json.Number `json:"eta"`
 		CreatedAt        string      `json:"inserted_at"`
 	}
+
+	Transaction struct {
+		ID                  string `json:"id"`
+		Amount              string `json:"amount"`
+		ClearingPeriod      string `json:"clearing_period"`
+		Mobile              string `json:"mobile"`
+		ParentTransactionID string `json:"parent_transaction_id"`
+		PosID               int64  `json:"pos_id"`
+		Status              string `json:"status"`
+		StatusDatetime      string `json:"status_datetime"`
+		StatusReason        string `json:"status_reason"`
+		Type                string `json:"type"`
+	}
 )
 
 func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) *VPOS {
@@ -253,6 +266,29 @@ func (v *VPOS) RefundOrCancelation(transactionType, parent_transaction_id string
 
 	transactionID = locationParts[locationPartsSize-1]
 	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+
+	return
+}
+
+func (v *VPOS) GetTransaction(transactionID string) (transaction Transaction, err error) {
+	url := fmt.Sprintf("%s/transactions/%s", sandboxURL, transactionID)
+	if v.Environment == "PRD" {
+		url = fmt.Sprintf("%s/transactions/%s", productionURL, transactionID)
+	}
+
+	response, err := httpGet(
+		url,
+		map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", v.Token),
+		},
+	)
+	if err != nil {
+		return
+	}
+
+	if err = json.Unmarshal(response, &transaction); err != nil {
+		return
+	}
 
 	return
 }
