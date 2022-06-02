@@ -39,7 +39,7 @@ func TestFailPaymentTransactionWithInvalidToken(t *testing.T) {
 }
 
 func TestFailRefundTransaction(t *testing.T) {
-	_, _, _, _, err := vpos.NewRefund("non-existent-transaction-id")
+	_, _, _, _, err := vpos.RefundOrCancelation("refund", "non-existent-transaction-id")
 	if err != nil {
 		t.Logf("something went wrong: %v", err)
 		t.Fail()
