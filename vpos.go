@@ -25,7 +25,7 @@ type (
 		PaymentCallbackURL string //Your Payment Callback URL
 		RefundCallbackURL  string //Your Refund Callback URL
 		SupervisorCard     string //Your GPO Supervisor Card
-		Environment        string //Your Environment, set 'PRD' for production or an empty string for sandbox environment
+		Environment        string //Your Environment, set "production" for production or "development" for sandbox environment
 	}
 
 	PaymentTransaction struct {
@@ -48,7 +48,11 @@ type (
 	}
 )
 
-func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) *VPOS {
+func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) (*VPOS, error) {
+	if !(environment == "production" || environment == "development") {
+		return &VPOS{}, errors.New("invalid environment")
+	}
+
 	return &VPOS{
 		Token:              token,
 		PosID:              posID,
@@ -56,7 +60,7 @@ func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervis
 		RefundCallbackURL:  refundCallbackURL,
 		SupervisorCard:     supervisorCard,
 		Environment:        environment,
-	}
+	}, nil
 }
 
 func GetStatusReason(code int64) (reason string, err error) {
@@ -69,7 +73,7 @@ func GetStatusReason(code int64) (reason string, err error) {
 
 func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err error) {
 	url := fmt.Sprintf("%s/requests/%s", sandboxURL, transactionID)
-	if v.Environment == "PRD" {
+	if v.Environment == "production" {
 		url = fmt.Sprintf("%s/requests/%s", productionURL, transactionID)
 	}
 
@@ -106,7 +110,7 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 	}
 
 	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "PRD" {
+	if v.Environment == "production" {
 		url = fmt.Sprintf("%s/transactions", productionURL)
 	}
 
@@ -161,7 +165,7 @@ func (v *VPOS) RefundOrCancelation(transactionType, parent_transaction_id string
 	}
 
 	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "PRD" {
+	if v.Environment == "production" {
 		url = fmt.Sprintf("%s/transactions", productionURL)
 	}
 

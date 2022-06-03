@@ -10,13 +10,13 @@ var (
 	refundCallbackURL  = ""
 	paymentCallbackURL = ""
 	supervidorCard     = ""
-	vpos               = NewVPOS(
+	vpos, _            = NewVPOS(
 		posID,
 		token,
 		paymentCallbackURL,
 		refundCallbackURL,
 		supervidorCard,
-		"",
+		"development",
 	)
 )
 
