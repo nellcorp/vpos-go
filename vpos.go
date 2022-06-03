@@ -158,7 +158,7 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 //transactionType is either 'refund' or 'cancelation'
 //if transactionType is 'refund', it will create a new refund transaction
 //if transactionType is 'cancelation', it will create a new cancelation transaction for a previously accepted payment authorization
-func (v *VPOS) RefundOrCancelation(transactionType, parent_transaction_id string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+func (v *VPOS) RefundOrCancelation(transactionType, parentTransactionID string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
 	if !(transactionType == refundTransaction || transactionType == cancelationTransaction) {
 		err = errors.New("invalid transaction type")
 		return
@@ -173,7 +173,7 @@ func (v *VPOS) RefundOrCancelation(transactionType, parent_transaction_id string
 
 	request := RefundTransaction{
 		Type:                transactionType,
-		ParentTransactionID: parent_transaction_id,
+		ParentTransactionID: parentTransactionID,
 		CallbackURL:         fmt.Sprintf("%s?nonce=%s", v.RefundCallbackURL, nonce),
 	}
 
