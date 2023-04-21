@@ -10,43 +10,42 @@ import (
 )
 
 const (
-	sandboxURL               = "https://sandbox.vpos.ao/api/v1"
-	productionURL            = "https://api.vpos.ao/api/v1"
-	paymentTransaction       = "payment"
-	refundTransaction        = "refund"
-	authorizationTransaction = "authorization"
-	cancelationTransaction   = "cancelation"
+	baseURL                           = "https://vpos.ao/api/v1"
+	TypePayment       TransactionType = "payment"
+	TypeRefund        TransactionType = "refund"
+	TypeAuthorization TransactionType = "authorization"
+	TypeCancelation   TransactionType = "cancelation"
 )
 
 type (
-	VPOS struct {
+	TransactionType string
+	VPOS            struct {
 		Token              string //Your VPOS Token
 		PosID              int64  //Your GPO POS ID
 		PaymentCallbackURL string //Your Payment Callback URL
 		RefundCallbackURL  string //Your Refund Callback URL
 		SupervisorCard     string //Your GPO Supervisor Card
-		Environment        string //Your Environment, set "production" for production or "development" for sandbox environment
 	}
 
 	PaymentTransaction struct {
-		Type        string `json:"type"`
-		PosID       int64  `json:"pos_id"`
-		Mobile      string `json:"mobile"`
-		Amount      string `json:"amount"`
-		CallbackURL string `json:"callback_url"`
+		Type        TransactionType `json:"type"`
+		PosID       int64           `json:"pos_id"`
+		Mobile      string          `json:"mobile"`
+		Amount      string          `json:"amount"`
+		CallbackURL string          `json:"callback_url"`
 	}
 
 	AuthorizedPaymentTransaction struct {
-		Type                string `json:"type"`
-		ParentTransactionID string `json:"parent_transaction_id"`
-		Amount              string `json:"amount"`
-		CallbackURL         string `json:"callback_url"`
+		Type                TransactionType `json:"type"`
+		ParentTransactionID string          `json:"parent_transaction_id"`
+		Amount              string          `json:"amount"`
+		CallbackURL         string          `json:"callback_url"`
 	}
 
 	RefundTransaction struct {
-		Type                string `json:"type"`
-		ParentTransactionID string `json:"parent_transaction_id"`
-		CallbackURL         string `json:"call_back_url"`
+		Type                TransactionType `json:"type"`
+		ParentTransactionID string          `json:"parent_transaction_id"`
+		CallbackURL         string          `json:"call_back_url"`
 	}
 
 	TransactionStatus struct {
@@ -55,32 +54,27 @@ type (
 	}
 
 	Transaction struct {
-		ID                  string `json:"id"`
-		Amount              string `json:"amount"`
-		ClearingPeriod      string `json:"clearing_period"`
-		Mobile              string `json:"mobile"`
-		ParentTransactionID string `json:"parent_transaction_id"`
-		PosID               int64  `json:"pos_id"`
-		Status              string `json:"status"`
-		StatusDatetime      string `json:"status_datetime"`
-		StatusReason        string `json:"status_reason"`
-		Type                string `json:"type"`
+		ID                  string          `json:"id"`
+		Amount              string          `json:"amount"`
+		ClearingPeriod      string          `json:"clearing_period"`
+		Mobile              string          `json:"mobile"`
+		ParentTransactionID string          `json:"parent_transaction_id"`
+		PosID               int64           `json:"pos_id"`
+		Status              string          `json:"status"`
+		StatusDatetime      string          `json:"status_datetime"`
+		StatusReason        string          `json:"status_reason"`
+		Type                TransactionType `json:"type"`
 	}
 )
 
-func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard, environment string) (*VPOS, error) {
-	if !(environment == "production" || environment == "development") {
-		return &VPOS{}, errors.New("invalid environment")
-	}
-
+func NewVPOS(posID int64, token, paymentCallbackURL, refundCallbackURL, supervisorCard string) *VPOS {
 	return &VPOS{
 		Token:              token,
 		PosID:              posID,
 		PaymentCallbackURL: paymentCallbackURL,
 		RefundCallbackURL:  refundCallbackURL,
 		SupervisorCard:     supervisorCard,
-		Environment:        environment,
-	}, nil
+	}
 }
 
 func GetStatusReason(code int64) (reason string, err error) {
@@ -91,11 +85,8 @@ func GetStatusReason(code int64) (reason string, err error) {
 	return
 }
 
-func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err error) {
-	url := fmt.Sprintf("%s/requests/%s", sandboxURL, transactionID)
-	if v.Environment == "production" {
-		url = fmt.Sprintf("%s/requests/%s", productionURL, transactionID)
-	}
+func (v *VPOS) GetRequest(transactionID string) (result int64, err error) {
+	url := fmt.Sprintf("%s/requests/%s", baseURL, transactionID)
 
 	response, err := httpGet(
 		url,
@@ -120,19 +111,16 @@ func (v *VPOS) TransactionRemainingTime(transactionID string) (result int64, err
 	return int64(floatResult), nil
 }
 
-//transactionType is either 'payment' or 'authorization'
-//if transactionType is 'payment', it will create a new payment transaction
-//if transactionType is 'authorization', it will create a new authorization transaction
-func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
-	if !(transactionType == paymentTransaction || transactionType == authorizationTransaction) {
+// transactionType is either 'payment' or 'authorization'
+// if transactionType is 'payment', it will create a new payment transaction
+// if transactionType is 'authorization', it will create a new authorization transaction
+func (v *VPOS) PaymentTransaction(transactionType TransactionType, mobile, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	if !(transactionType == TypePayment || transactionType == TypeAuthorization) {
 		err = errors.New("invalid transaction type")
 		return
 	}
 
-	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "production" {
-		url = fmt.Sprintf("%s/transactions", productionURL)
-	}
+	url := fmt.Sprintf("%s/transactions/%s", baseURL, transactionID)
 
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 
@@ -170,21 +158,18 @@ func (v *VPOS) PaymentTransaction(transactionType, mobile, amount string) (trans
 	}
 
 	transactionID = locationParts[locationPartsSize-1]
-	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+	timeRemaining, _ = v.GetRequest(transactionID)
 
 	return
 }
 
-//It creates a new payment transaction from a previously accepted authorization transaction
+// It creates a new payment transaction from a previously accepted authorization transaction
 func (v *VPOS) PaymentWithAuthorization(parent_transaction_id, amount string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
-	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "PRD" {
-		url = fmt.Sprintf("%s/transactions", productionURL)
-	}
+	url := fmt.Sprintf("%s/transactions/%s", baseURL, transactionID)
 
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 	request := AuthorizedPaymentTransaction{
-		Type:                paymentTransaction,
+		Type:                TypePayment,
 		ParentTransactionID: parent_transaction_id,
 		Amount:              amount,
 		CallbackURL:         fmt.Sprintf("%s?nonce=%s", v.PaymentCallbackURL, nonce),
@@ -216,24 +201,21 @@ func (v *VPOS) PaymentWithAuthorization(parent_transaction_id, amount string) (t
 	}
 
 	transactionID = locationParts[locationPartsSize-1]
-	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+	timeRemaining, _ = v.GetRequest(transactionID)
 
 	return
 }
 
-//transactionType is either 'refund' or 'cancelation'
-//if transactionType is 'refund', it will create a new refund transaction
-//if transactionType is 'cancelation', it will create a new cancelation transaction for a previously accepted payment authorization
-func (v *VPOS) RefundOrCancelation(transactionType, parentTransactionID string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
-	if !(transactionType == refundTransaction || transactionType == cancelationTransaction) {
+// transactionType is either 'refund' or 'cancelation'
+// if transactionType is 'refund', it will create a new refund transaction
+// if transactionType is 'cancelation', it will create a new cancelation transaction for a previously accepted payment authorization
+func (v *VPOS) RefundOrCancelation(transactionType TransactionType, parentTransactionID string) (transactionID, idempotencyKey, nonce string, timeRemaining int64, err error) {
+	if !(transactionType == TypeRefund || transactionType == TypeCancelation) {
 		err = errors.New("invalid transaction type")
 		return
 	}
 
-	url := fmt.Sprintf("%s/transactions", sandboxURL)
-	if v.Environment == "production" {
-		url = fmt.Sprintf("%s/transactions", productionURL)
-	}
+	url := fmt.Sprintf("%s/transactions/%s", baseURL, transactionID)
 
 	idempotencyKey, nonce = shortUUID(), shortUUID()
 
@@ -269,16 +251,13 @@ func (v *VPOS) RefundOrCancelation(transactionType, parentTransactionID string) 
 	}
 
 	transactionID = locationParts[locationPartsSize-1]
-	timeRemaining, _ = v.TransactionRemainingTime(transactionID)
+	timeRemaining, _ = v.GetRequest(transactionID)
 
 	return
 }
 
 func (v *VPOS) GetTransaction(transactionID string) (transaction Transaction, err error) {
-	url := fmt.Sprintf("%s/transactions/%s", sandboxURL, transactionID)
-	if v.Environment == "PRD" {
-		url = fmt.Sprintf("%s/transactions/%s", productionURL, transactionID)
-	}
+	url := fmt.Sprintf("%s/transactions/%s", baseURL, transactionID)
 
 	response, err := httpGet(
 		url,

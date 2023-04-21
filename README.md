@@ -19,10 +19,11 @@ interacting with the API using this package:
 | `MERCHANT_VPOS_TOKEN` | The API token provided by vPOS | true |
 | `PAYMENT_CALLBACK_URL` | The URL that will handle payment notifications | false |
 | `REFUND_CALLBACK_URL` | The URL that will handle refund notifications | false |
-| `ENVIRONMENT` | Your application environment, set "production" for production or "development" for sandbox/tests environment | true |
 
 Given you have set up all the environment variables above with the correct information, you will now
 be able to authenticate and communicate effectively with vPOS API Payment Gateway using this package. 
+
+**Note:** During development, make sure to use a token created for the sandbox environment
 
 The next section will show the various payment actions that can be performed by you, the merchant.
 
@@ -36,7 +37,6 @@ To create an instance of a vPOS merchant see argument table and a simple example
 | `supervisorCard` | Merchant Supervisor Card number provided by EMIS | `string`
 | `paymentCallbackURL` | Merchant application endpoint to accept the callback payment response | `string`
 | `refundCallbackURL` | Merchant application endpoint to accept the callback refund response | `string`
-| `environment` | Your application environment, is either "production" or "development" | `string`
 
 #### Example
 ```go
@@ -54,7 +54,6 @@ var (
     paymentCallbackURL = os.Getenv("PAYMENT_CALLBACK_URL")
     refundCallbackURL  = os.Getenv("REFUND_CALLBACK_URL")
     supervisorCard     = os.Getenv("GPO_SUPERVISOR_CARD")
-    environment        = os.Getenv("ENVIRONMENT")
 )
 
 func main() {
@@ -63,8 +62,7 @@ func main() {
         token,
         paymentCallbackURL,
         refundCallbackURL,
-        supervisorCard,
-        environment
+        supervisorCard
     )
 }
 ```
@@ -88,7 +86,6 @@ var (
     paymentCallbackURL = os.Getenv("PAYMENT_CALLBACK_URL")
     refundCallbackURL  = os.Getenv("REFUND_CALLBACK_URL")
     supervisorCard     = os.Getenv("GPO_SUPERVISOR_CARD")
-    environment        = os.Getenv("ENVIRONMENT")
 )
 
 func main() {
@@ -97,8 +94,7 @@ func main() {
         token,
         paymentCallbackURL,
         refundCallbackURL,
-        supervisorCard,
-        environment
+        supervisorCard
     )
 
     transactionType := "payment" // or "authorization"
@@ -137,7 +133,6 @@ var (
     paymentCallbackURL = os.Getenv("PAYMENT_CALLBACK_URL")
     refundCallbackURL  = os.Getenv("REFUND_CALLBACK_URL")
     supervisorCard     = os.Getenv("GPO_SUPERVISOR_CARD")
-    environment        = os.Getenv("ENVIRONMENT")
 )
 
 func main() {
@@ -146,8 +141,7 @@ func main() {
         token,
         paymentCallbackURL,
         refundCallbackURL,
-        supervisorCard,
-        environment
+        supervisorCard
     )
 
     parentTransactionID := "9kOmKYUWxN0Jpe4PBoXzE"
@@ -184,7 +178,6 @@ var (
     paymentCallbackURL = os.Getenv("PAYMENT_CALLBACK_URL")
     refundCallbackURL  = os.Getenv("REFUND_CALLBACK_URL")
     supervisorCard     = os.Getenv("GPO_SUPERVISOR_CARD")
-    environment        = os.Getenv("ENVIRONMENT")
 )
 
 func main() {
@@ -193,8 +186,7 @@ func main() {
         token,
         paymentCallbackURL,
         refundCallbackURL,
-        supervisorCard,
-        environment
+        supervisorCard
     )
 
     transactionType := "refund" // or "cancelation"
@@ -231,7 +223,6 @@ var (
     paymentCallbackURL = os.Getenv("PAYMENT_CALLBACK_URL")
     refundCallbackURL  = os.Getenv("REFUND_CALLBACK_URL")
     supervisorCard     = os.Getenv("GPO_SUPERVISOR_CARD")
-    environment        = os.Getenv("ENVIRONMENT")
 )
 
 func main() {
@@ -240,8 +231,7 @@ func main() {
         token,
         paymentCallbackURL,
         refundCallbackURL,
-        supervisorCard,
-        environment
+        supervisorCard
     )
 
     transactionID := "1jHbXEbRTIbbwaoJ6w06nLcRG7X"
